@@ -3,7 +3,7 @@
 A simple Discord self-bot that uses **Gemini AI** to automatically reply, handle mentions, and engage in conversations. Great for automating tasks like leveling up in servers for **airdrops** and participating in events that require activity.
 
 ---
-
+# [Multi Account supported Bot here](https://github.com/xNabil/multi-discord-ai-bot.git)
 ## 📜 Overview
 **Discord Gemini Chat Bot** is a **Python-based auto bot** designed to work as a **Discord self-bot**. It leverages **Gemini AI** for natural, **conversational interactions**, making your Discord server more engaging and interactive. The bot automatically replies to messages, mentions, and conversations, **personalizing responses** with different moods and languages.
 
