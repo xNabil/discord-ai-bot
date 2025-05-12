@@ -1,15 +1,12 @@
+
+
 # Discord Gemini Chat Bot
 
-A simple Discord self-bot that uses **Gemini AI** to automatically reply, handle mentions, and engage in conversations. Great for automating tasks like leveling up in servers for **airdrops** and participating in events that require activity.
+A multi-account Discord chat bot powered by Google Gemini AI, designed to engage in human-like conversations in a Discord channel. Features include topic detection, sentiment analysis, banned words handling, user profiling, and a professional yet casual tone.
 
----
-# [Multi Account supported Bot here](https://github.com/xNabil/multi-discord-ai-bot.git)
-## 📜 Overview
-**Discord Gemini Chat Bot** is a **Python-based auto bot** designed to work as a **Discord self-bot**. It leverages **Gemini AI** for natural, **conversational interactions**, making your Discord server more engaging and interactive. The bot automatically replies to messages, mentions, and conversations, **personalizing responses** with different moods and languages.
-
-⚡ _Ideal for automating Discord interactions, creating a self-bot for fun, or using it for specific tasks like leveling up in servers for **airdrops** or participating in events that require activity on platforms like **Mee6 bot**._
-
-## 🚀 Features
+## Features
+- **Multi-Account Support**: Run up to 3 bot accounts simultaneously.
+- **Colored Terminal Output**: Groups "Replying to" and "Sent" messages for clarity.
 - **AI-Driven Responses**: Leverages Gemini AI for natural, context-aware, human-like replies.
 - **Reply & Mention Priority**: Prioritizes responses to direct mentions and replies for engaging interactions.
 - **Multi-Language Support**: Supports English, Hindi, Spanish, French, and German natively.
@@ -40,9 +37,10 @@ A simple Discord self-bot that uses **Gemini AI** to automatically reply, handle
 **3.Setup the `.env` File**
    add the Necessary fields in `.env` in the root directory and add:
    ```env
-   DISCORD_TOKEN=your_discord_user_token
-   GEMINI_API_KEY=your_gemini_api_key
-   SLOW_MODE=60,65
+DISCORD_TOKEN=Token_1,Token_2,Token_3
+GEMINI_API_KEY=API_1,API_2,API_3
+CHANNEL_ID=your_discord_channel_id 
+SLOW_MODE=120,36
    ```
 ## 🔑 How to Get Your Tokens for the `.env`
 
