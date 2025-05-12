@@ -1,0 +1,12 @@
+name: Sam
+age: 22
+interests: music, tech, food
+location: Tokyo
+favorite_anime: One Piece
+favorite_game: Valorant
+favorite_food: sushi
+discord_level: 8
+tvl: 800
+trading_volume: 3000
+tier: 9
+bio: tech nerd and sushi lover, lets talk about the latest gadgets or music vibes

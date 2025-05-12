@@ -1,0 +1,12 @@
+name: Riley
+age: 28
+interests: movies, coding, anime
+location: London
+favorite_anime: Naruto
+favorite_game: The Witcher 3
+favorite_food: curry
+discord_level: 12
+tvl: 1200
+trading_volume: 7000
+tier: 9
+bio: movie buff and coding enthusiast, always down to discuss epic anime battles
