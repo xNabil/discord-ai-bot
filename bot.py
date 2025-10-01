@@ -20,6 +20,17 @@ from collections import deque
 import queue
 import threading
 
+# Custom logging filter to suppress specific warning messages
+class SuppressWarningsFilter(logging.Filter):
+    def filter(self, record):
+        return not (
+            "absl::InitializeLog" in record.getMessage() or
+            "alts_credentials.cc" in record.getMessage()
+        )
+
+# Apply filter to suppress warnings from Google Gemini API
+logging.getLogger().addFilter(SuppressWarningsFilter())
+
 # Initialize colorama for colored terminal output and set up logging
 init()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -36,6 +47,8 @@ SLOW_MODE_LOCK = threading.Lock()
 # Global state for countdown line
 COUNTDOWN_LINE = ""
 COUNTDOWN_LOCK = threading.Lock()
+# Lock for channels.json file access
+CHANNEL_CACHE_LOCK = threading.Lock()
 
 print(f"{Fore.CYAN}Starting Multi-Account Discord Chat Bot...{Style.RESET_ALL}")
 
@@ -50,24 +63,27 @@ except Exception as e:
 # Retrieve and parse environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
+CHANNEL_IDS = os.getenv("CHANNEL_ID")  # Changed to CHANNEL_IDS for clarity
 SLOW_MODE = os.getenv("SLOW_MODE")
 
-# Parse comma-separated tokens and API keys (max 3 accounts)
+# Parse comma-separated tokens, API keys, and channel IDs (max 3 accounts, max 6 channels)
 try:
     DISCORD_TOKENS = [t.strip().strip('"') for t in DISCORD_TOKEN.split(",")] if DISCORD_TOKEN else []
     GEMINI_API_KEYS = [k.strip().strip('"') for k in GEMINI_API_KEY.split(",")] if GEMINI_API_KEY else []
+    CHANNEL_IDS = [c.strip().strip('"') for c in CHANNEL_IDS.split(",")] if CHANNEL_IDS else []
     if len(DISCORD_TOKENS) != len(GEMINI_API_KEYS) or len(DISCORD_TOKENS) > 3:
         raise ValueError("Number of DISCORD_TOKEN and GEMINI_API_KEY must match and be <= 3")
+    if len(CHANNEL_IDS) > 6:
+        raise ValueError("Maximum 6 channel IDs allowed")
 except Exception as e:
-    print(f"{Fore.RED}Error parsing tokens or keys: {e}{Style.RESET_ALL}")
+    print(f"{Fore.RED}Error parsing tokens, keys, or channel IDs: {e}{Style.RESET_ALL}")
     exit(1)
 
 # Validate environment variables
-if not DISCORD_TOKENS or not GEMINI_API_KEYS or not CHANNEL_ID:
+if not DISCORD_TOKENS or not GEMINI_API_KEYS or not CHANNEL_IDS:
     print(f"{Fore.RED}Missing required environment variables!{Style.RESET_ALL}")
     exit(1)
-print(f"{Fore.GREEN}Environment variables validated for {len(DISCORD_TOKENS)} account(s){Style.RESET_ALL}")
+print(f"{Fore.GREEN}Environment variables validated for {len(DISCORD_TOKENS)} account(s) and {len(CHANNEL_IDS)} channel(s){Style.RESET_ALL}")
 
 # Initialize SLOW_MODE_TIMERS for accounts
 SLOW_MODE_TIMERS = {i: 0 for i in range(len(DISCORD_TOKENS))}
@@ -118,6 +134,78 @@ class AccountState:
 
 # Initialize accounts
 ACCOUNTS = [AccountState(i, token, key) for i, (token, key) in enumerate(zip(DISCORD_TOKENS, GEMINI_API_KEYS))]
+
+# Function to get channel and server name with caching
+async def get_channel_name(account, channel_id):
+    """Retrieve channel and server name from cache or Discord API, caching results in channels.json."""
+    cache_file = "channels.json"
+    channel_data = {}
+
+    # Read from cache
+    with CHANNEL_CACHE_LOCK:
+        try:
+            if os.path.exists(cache_file):
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    channel_data = json.load(f)
+        except Exception as e:
+            MESSAGE_QUEUE.put(account.prefix(f"{Fore.YELLOW}Error reading channels.json: {e}{Style.RESET_ALL}"))
+
+    # Check if channel_id is in cache
+    if channel_id in channel_data:
+        return channel_data[channel_id].get("server_name", "Unknown Server")
+
+    # Fetch from Discord API
+    try:
+        async def fetch_channel_info():
+            url = f"https://discord.com/api/v9/channels/{channel_id}"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=account.headers) as response:
+                    if response.status == 429:
+                        retry_after = float((await response.json()).get("retry_after", 1))
+                        MESSAGE_QUEUE.put(account.prefix(f"{Fore.YELLOW}Rate limited fetching channel info, waiting {retry_after}s{Style.RESET_ALL}"))
+                        await asyncio.sleep(retry_after)
+                        return await fetch_channel_info()
+                    response.raise_for_status()
+                    return await response.json()
+
+        channel_info = await fetch_channel_info()
+        channel_name = channel_info.get("name", "unknown_channel")
+        guild_id = channel_info.get("guild_id")
+
+        server_name = "Unknown Server"
+        if guild_id:
+            async def fetch_guild_info():
+                url = f"https://discord.com/api/v9/guilds/{guild_id}"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=account.headers) as response:
+                        if response.status == 429:
+                            retry_after = float((await response.json()).get("retry_after", 1))
+                            MESSAGE_QUEUE.put(account.prefix(f"{Fore.YELLOW}Rate limited fetching guild info, waiting {retry_after}s{Style.RESET_ALL}"))
+                            await asyncio.sleep(retry_after)
+                            return await fetch_guild_info()
+                        response.raise_for_status()
+                        return await response.json()
+
+            guild_info = await fetch_guild_info()
+            server_name = guild_info.get("name", "Unknown Server")
+
+        # Update cache
+        channel_data[channel_id] = {
+            "channel_name": channel_name,
+            "server_name": server_name
+        }
+        with CHANNEL_CACHE_LOCK:
+            try:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump(channel_data, f, indent=2)
+                MESSAGE_QUEUE.put(account.prefix(f"{Fore.GREEN}Cached channel {channel_id} with server name {server_name}{Style.RESET_ALL}"))
+            except Exception as e:
+                MESSAGE_QUEUE.put(account.prefix(f"{Fore.RED}Error writing to channels.json: {e}{Style.RESET_ALL}"))
+
+        return server_name
+    except Exception as e:
+        MESSAGE_QUEUE.put(account.prefix(f"{Fore.RED}Error fetching channel info for {channel_id}: {e}{Style.RESET_ALL}"))
+        return "Unknown Server"
 
 # Terminal printer task
 async def terminal_printer():
@@ -400,7 +488,7 @@ def extract_user_preferences(text):
         preferences['favorite_game'] = game_match.group(1)
     food_match = FAVORITE_FOOD_PATTERN.search(text)
     if food_match:
-        preferences['favorite_food'] = food_match.group(1)
+        preferences['favorite_food'] = game_match.group(1)
     anime_match = FAVORITE_ANIME_PATTERN.search(text)
     if anime_match:
         preferences['favorite_anime'] = anime_match.group(1)
@@ -733,7 +821,7 @@ def is_message_old(timestamp_str):
 def print_header():
     header = """
 ╭──────────────────────────────────────────────────────────╮
-│   🤖  Discord Chat Bot by Nabil - Version 4.0            │
+│   🤖  Discord Chat Bot by Nabil - Version 5.0            │
 │   ⚡  Multi-Account · Smart · Humanlike · Gemini-Powered │
 │   🌐  github.com/xNabil                                  │
 ╰──────────────────────────────────────────────────────────╯
@@ -764,24 +852,26 @@ async def print_countdown(account, seconds, message="Waiting"):
             SLOW_MODE_TIMERS[account.index] = max(0, seconds - elapsed)
         elapsed = time.time() - start_time
         if elapsed % check_interval < 0.1 or elapsed >= seconds:
-            messages = await fetch_channel_messages(account, CHANNEL_ID, 50)
-            if messages:
-                new_replies = [
-                    msg for msg in messages
-                    if msg.get("referenced_message", {}).get("author", {}).get("id") == account.bot_user_id
-                    and not is_message_old(msg.get("timestamp", ""))
-                    and not has_responded(account, msg.get("id"))
-                    and msg.get("id") not in account.responded_messages
-                    and msg not in account.pending_replies
-                ]
-                for reply in new_replies:
-                    account.pending_replies.append(reply)
-                    print_status(
-                        account,
-                        f"Queued reply from {Fore.BLUE}{reply['author']['username']}{Style.RESET_ALL}: "
-                        f"{Fore.YELLOW}{reply['content']}{Style.RESET_ALL}",
-                        'info'
-                    )
+            for channel_id in CHANNEL_IDS:
+                server_name = await get_channel_name(account, channel_id)
+                messages = await fetch_channel_messages(account, channel_id, 50)
+                if messages:
+                    new_replies = [
+                        msg for msg in messages
+                        if msg.get("referenced_message", {}).get("author", {}).get("id") == account.bot_user_id
+                        and not is_message_old(msg.get("timestamp", ""))
+                        and not has_responded(account, msg.get("id"))
+                        and msg.get("id") not in account.responded_messages
+                        and msg not in account.pending_replies
+                    ]
+                    for reply in new_replies:
+                        account.pending_replies.append(reply)
+                        print_status(
+                            account,
+                            f"Queued reply from {Fore.BLUE}{reply['author']['username']}{Style.RESET_ALL}: "
+                            f"{Fore.YELLOW}{reply['content']}{Style.RESET_ALL} in {server_name}",
+                            'info'
+                        )
         await asyncio.sleep(0.1)
     with SLOW_MODE_LOCK:
         SLOW_MODE_TIMERS[account.index] = 0
@@ -800,7 +890,7 @@ async def print_slowmode_status():
         await asyncio.sleep(1)
 
 # Main bot logic for a single account
-async def run_account(account, channel_id, slow_mode_range):
+async def run_account(account, slow_mode_range):
     print_status(account, "Getting bot ready...", 'info')
 
     if not await validate_token(account):
@@ -818,98 +908,107 @@ async def run_account(account, channel_id, slow_mode_range):
                 wait_time = random.uniform(*slow_mode_range)
                 await print_countdown(account, wait_time)
 
-                messages = await fetch_channel_messages(account, channel_id, 50)
-                if not messages:
-                    print_status(account, "No messages found, trying again...", 'warning')
-                    continue
+                for channel_id in CHANNEL_IDS:
+                    server_name = await get_channel_name(account, channel_id)
+                    print_status(account, f"Processing {server_name}", 'info')
 
-                for msg in messages:
-                    prefs = extract_user_preferences(msg.get('content', ''))
-                    for key, value in prefs.items():
-                        update_user_profile(account, msg['author']['id'], key, value)
+                    messages = await fetch_channel_messages(account, channel_id, 50)
+                    if not messages:
+                        print_status(account, f"No messages found in {server_name}, trying again...", 'warning')
+                        continue
 
-                other_messages = [
-                    msg for msg in messages
-                    if msg.get("content")
-                    and not is_message_old(msg.get("timestamp", ""))
-                    and msg.get("author", {}).get("id") != account.bot_user_id
-                    and not has_responded(account, msg.get("id"))
-                    and msg.get("id") not in account.responded_messages
-                    and msg not in account.pending_replies
-                ]
+                    for msg in messages:
+                        prefs = extract_user_preferences(msg.get('content', ''))
+                        for key, value in prefs.items():
+                            update_user_profile(account, msg['author']['id'], key, value)
 
-                # Determine the dominant topic and sentiment from recent messages
-                recent_topics = [detect_topic(msg.get('content', '')) for msg in messages[:5]]
-                recent_sentiments = [get_sentiment(msg.get('content', '')) for msg in messages[:5]]
-                dominant_topic = max(set(recent_topics), key=recent_topics.count, default='general')
-                dominant_sentiment = max(set(recent_sentiments), key=recent_sentiments.count, default='neutral')
-                mood = get_bot_mood(dominant_sentiment)
+                    other_messages = [
+                        msg for msg in messages
+                        if msg.get("content")
+                        and not is_message_old(msg.get("timestamp", ""))
+                        and msg.get("author", {}).get("id") != account.bot_user_id
+                        and not has_responded(account, msg.get("id"))
+                        and msg.get("id") not in account.responded_messages
+                        and msg not in account.pending_replies
+                    ]
 
-                last_message_time = max([isoparse(msg['timestamp']).timestamp() for msg in messages])
-                if time.time() - last_message_time > 300 and random.random() < 0.2:
-                    print_status(account, "Chat’s quiet, starting something...", 'info')
-                    # Generate a dynamic prompt for a random message
-                    memory_context = get_memory_context(account)
+                    # Determine the dominant topic and sentiment from recent messages
+                    recent_topics = [detect_topic(msg.get('content', '')) for msg in messages[:5]]
+                    recent_sentiments = [get_sentiment(msg.get('content', '')) for msg in messages[:5]]
+                    dominant_topic = max(set(recent_topics), key=recent_topics.count, default='general')
+                    dominant_sentiment = max(set(recent_sentiments), key=recent_sentiments.count, default='neutral')
+                    mood = get_bot_mood(dominant_sentiment)
+
+                    last_message_time = max([isoparse(msg['timestamp']).timestamp() for msg in messages if msg.get('timestamp')])
+                    if time.time() - last_message_time > 300 and random.random() < 0.2:
+                        print_status(account, f"Chat’s quiet in {server_name}, starting something...", 'info')
+                        # Generate a dynamic prompt for a random message
+                        memory_context = get_memory_context(account)
+                        prompt = (
+                            f"the chat has been quiet for a while, start a new conversation "
+                            f"based on the recent topic ({dominant_topic}) and sentiment ({dominant_sentiment}). "
+                            f"consider this recent chat history:\n{memory_context}\n"
+                            f"create a casual, engaging message to spark discussion, "
+                            f"tailored to the topic and mood ({mood})."
+                        )
+                        response = await get_gemini_response(account, prompt, 'random', mood, None, dominant_sentiment, dominant_topic)
+                        if response:
+                            await send_reply(account, channel_id, response, (0, 2))
+                            add_to_memory(account, None, account.bot_username, prompt, response, dominant_topic)
+                        continue
+
+                    target_message = None
+                    if account.pending_replies:
+                        target_message = account.pending_replies.popleft()
+                        print_status(account, f"Responding to queued reply from {target_message['author']['username']} in {server_name}", 'info')
+                    elif other_messages and random.random() < 0.99:
+                        target_message = random.choice(other_messages)
+                        print_status(account, f"Replying to other message from {target_message['author']['username']} in {server_name}", 'info')
+                    else:
+                        print_status(account, f"No replies in {server_name}, sending random message", 'info')
+                        # Generate a dynamic prompt for a random message
+                        memory_context = get_memory_context(account)
+                        prompt = (
+                            f"the chat is active, contribute to the conversation "
+                            f"based on the recent topic ({dominant_topic}) and sentiment ({dominant_sentiment}). "
+                            f"consider this recent chat history:\n{memory_context}\n"
+                            f"create a casual, engaging message to keep the discussion going, "
+                            f"tailored to the topic and mood ({mood})."
+                        )
+                        response = await get_gemini_response(account, prompt, 'random', mood, None, dominant_sentiment, dominant_topic)
+                        if response:
+                            await send_reply(account, channel_id, response, (0, 2))
+                            add_to_memory(account, None, account.bot_username, prompt, response, dominant_topic)
+                        continue
+
+                    sentiment = get_sentiment(target_message['content'])
+                    topic = detect_topic(target_message['content'])
+                    mood = get_bot_mood(sentiment)
+                    user_profile = get_user_profile(account, target_message['author']['id'])
+
+                    context = f"they said: {target_message['content']}"
                     prompt = (
-                        f"the chat has been quiet for a while, start a new conversation "
-                        f"based on the recent topic ({dominant_topic}) and sentiment ({dominant_sentiment}). "
-                        f"consider this recent chat history:\n{memory_context}\n"
-                        f"create a casual, engaging message to spark discussion, "
-                        f"tailored to the topic and mood ({mood})."
+                        f"you’re a chill discord user responding to this:\n{context}\n"
+                        f"create a unique, engaging reply that matches the topic ({topic}), "
+                        f"sentiment ({sentiment}), and mood ({mood})."
                     )
-                    response = await get_gemini_response(account, prompt, 'random', mood, None, dominant_sentiment, dominant_topic)
+                    response = await get_gemini_response(account, prompt, 'reply', mood, user_profile, sentiment, topic)
+
                     if response:
-                        await send_reply(account, channel_id, response, (0, 2))
-                        add_to_memory(account, None, account.bot_username, prompt, response, dominant_topic)
-                    continue
+                        print_status(
+                            account,
+                            f"Replying to [ {Fore.BLUE}{target_message['author']['username']}{Style.RESET_ALL} ]: "
+                            f"{Fore.YELLOW}{target_message['content']}{Style.RESET_ALL} in {server_name}",
+                            'info'
+                        )
+                        await send_reply(account, channel_id, response, (0, 2), target_message.get("id"))
+                        add_to_memory(account, target_message['id'], target_message['author']['username'], target_message['content'], response, topic)
+                        account.responded_messages.append(target_message['id'])
 
-                target_message = None
-                if account.pending_replies:
-                    target_message = account.pending_replies.popleft()
-                    print_status(account, f"Responding to queued reply from {target_message['author']['username']}", 'info')
-                elif other_messages and random.random() < 0.99:
-                    target_message = random.choice(other_messages)
-                    print_status(account, f"Replying to other message from {target_message['author']['username']}", 'info')
-                else:
-                    print_status(account, "No replies, sending random message", 'info')
-                    # Generate a dynamic prompt for a random message
-                    memory_context = get_memory_context(account)
-                    prompt = (
-                        f"the chat is active, contribute to the conversation "
-                        f"based on the recent topic ({dominant_topic}) and sentiment ({dominant_sentiment}). "
-                        f"consider this recent chat history:\n{memory_context}\n"
-                        f"create a casual, engaging message to keep the discussion going, "
-                        f"tailored to the topic and mood ({mood})."
-                    )
-                    response = await get_gemini_response(account, prompt, 'random', mood, None, dominant_sentiment, dominant_topic)
-                    if response:
-                        await send_reply(account, channel_id, response, (0, 2))
-                        add_to_memory(account, None, account.bot_username, prompt, response, dominant_topic)
-                    continue
-
-                sentiment = get_sentiment(target_message['content'])
-                topic = detect_topic(target_message['content'])
-                mood = get_bot_mood(sentiment)
-                user_profile = get_user_profile(account, target_message['author']['id'])
-
-                context = f"they said: {target_message['content']}"
-                prompt = (
-                    f"you’re a chill discord user responding to this:\n{context}\n"
-                    f"create a unique, engaging reply that matches the topic ({topic}), "
-                    f"sentiment ({sentiment}), and mood ({mood})."
-                )
-                response = await get_gemini_response(account, prompt, 'reply', mood, user_profile, sentiment, topic)
-
-                if response:
-                    print_status(
-                        account,
-                        f"Replying to [ {Fore.BLUE}{target_message['author']['username']}{Style.RESET_ALL} ]: "
-                        f"{Fore.YELLOW}{target_message['content']}{Style.RESET_ALL}",
-                        'info'
-                    )
-                    await send_reply(account, channel_id, response, (0, 2), target_message.get("id"))
-                    add_to_memory(account, target_message['id'], target_message['author']['username'], target_message['content'], response, topic)
-                    account.responded_messages.append(target_message['id'])
+                    # Add delay between channels (2-5 seconds)
+                    channel_delay = random.uniform(2, 5)
+                    print_status(account, f"Waiting {channel_delay:.2f}s before processing next channel", 'info')
+                    await asyncio.sleep(channel_delay)
 
             except Exception as e:
                 print_status(account, f"Main loop error: {e}", 'error')
@@ -938,7 +1037,7 @@ async def main():
         # Configure Gemini AI for the account
         try:
             genai.configure(api_key=account.gemini_key)
-            account.model = genai.GenerativeModel("gemini-1.5-flash")
+            account.model = genai.GenerativeModel("gemini-2.5-flash")
             print_status(account, "Gemini AI configured successfully", 'success')
         except Exception as e:
             print_status(account, f"Error configuring Gemini AI: {e}", 'error')
@@ -952,10 +1051,10 @@ async def main():
     tasks = [
         terminal_printer(),
         print_slowmode_status(),
-        *[run_account(account, CHANNEL_ID, slow_mode_range) for account in ACCOUNTS]
+        *[run_account(account, slow_mode_range) for account in ACCOUNTS]
     ]
     await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
-    print_status(ACCOUNTS[0], f"Starting bot with {len(ACCOUNTS)} accounts...", 'info')
+    print_status(ACCOUNTS[0], f"Starting bot with {len(ACCOUNTS)} accounts and {len(CHANNEL_IDS)} channels...", 'info')
     asyncio.run(main())
