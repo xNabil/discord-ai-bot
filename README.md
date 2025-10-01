@@ -4,44 +4,60 @@
 
 A multi-account Discord chat bot powered by Google Gemini AI, designed to engage in human-like conversations in a Discord channel. Features include topic detection, sentiment analysis, banned words handling, user profiling, and a professional yet casual tone.
 
-## Features
-- **Multi-Account Support**: Run up to 3 bot accounts simultaneously.
-- **Colored Terminal Output**: Groups "Replying to" and "Sent" messages for clarity.
-- **AI-Driven Responses**: Leverages Gemini AI for natural, context-aware, human-like replies.
-- **Reply & Mention Priority**: Prioritizes responses to direct mentions and replies for engaging interactions.
-- **Multi-Language Support**: Supports English, Hindi, Spanish, French, and German natively.
-- **Conversation Memory**: Stores up to 50 past interactions in SQLite for smarter, context-rich conversations.
-- **Customizable Slow Mode**: Configurable message scanning intervals via `.env` (e.g., `60,65` seconds).
-- **Mood Variations**: Dynamic tones (excited, chill, sarcastic, etc.) with emojis used sparingly (~1 in 15 messages).
-- **Personalization**: Uses `myinfo.txt` for tailored responses based on user-defined preferences.
-- **Rate Limiting Handling**: Intelligent retry mechanism for Discord and Gemini API rate limits.
-- **Duplicate Response Prevention**: Ensures no message is responded to more than once using SQLite and in-memory tracking.
-- **Custom Response Pattern**: Enforces a 15-message cycle with ~3 single-word replies, ~11 short replies (1 sentence), and 1 long reply (2–4 sentences).
-- **Robust Database Management**: Persistent SQLite connection with automatic reinitialization to prevent closure errors.
-- **Banned Words Handling**: Sanitizes messages to avoid restricted words, maintaining safe interactions.
+## 🚀 Features & Capabilities
+- Multi-account & multi-server support  
+- Smart channel/server caching (`channels.json`)  
+- Gemini 2.5 Flash AI-powered replies  
+- Humanlike style: slang, typos, emoji, self-correction  
+- Topic & sentiment detection  
+- User profiling & personalization (`myinfo.txt`)  
+- Per-account conversation memory (SQLite)  
+- Banned words handling & AI rephrase  
+- Reply/mention priority  
+- Slowmode & rate-limit aware  
+- Typing simulation  
+- Custom colored terminal output  
+- Duplicate response prevention  
+- Configurable response cycles  
+- Robust logging & warning suppression  
 
 
 ## 🧰 Installation
 
-**1.Clone the Repository**
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/xNabil/discord-ai-bot.git
    cd discord-ai-bot
    ```
 
-**2.Install Dependencies**
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
+   *(Requires Python 3.8+)*
 
-**3.Setup the `.env` File**
-   add the Necessary fields in `.env` in the root directory and add:
-   ```env
-DISCORD_TOKEN=Token_1,Token_2,Token_3
-GEMINI_API_KEY=API_1,API_2,API_3
-CHANNEL_ID=your_discord_channel_id 
-SLOW_MODE=120,36
-   ```
+3. **Prepare your environment variables:**  
+   Create a `.env` file in the repo root (see below).
+
+---
+
+## ⚙️ .env Setup (v5.0)
+
+The `.env` file supports multiple accounts and multiple channels.
+
+```
+DISCORD_TOKEN="token1,token2,token3"
+GEMINI_API_KEY="key1,key2,key3"
+CHANNEL_ID="channelid1,channelid2,channelid3"
+SLOW_MODE="60,180"
+```
+
+- **DISCORD_TOKEN**: Comma-separated list of Discord tokens for each account (max 3).
+- **GEMINI_API_KEY**: Comma-separated list of Gemini API keys—one per account.
+- **CHANNEL_ID**: Comma-separated list of Discord channel IDs to monitor/reply in.
+- **SLOW_MODE**: Minimum and maximum seconds between replies (e.g. `60,180` for 1-3 minutes).
+
+---
 ## 🔑 How to Get Your Tokens for the `.env`
 
 ### How to Get a Gemini API Key
@@ -55,43 +71,20 @@ SLOW_MODE=120,36
 
 ---
 
-### 🔓 Discord User Token
-> ⚠️ **Warning:** Using a **user token** violates Discord’s **Terms of Service** and can lead to account bans. Use for personal/educational purposes only.
+## 🔓 How to Get Your Discord User Token
 
-1. Open [Discord Web](https://discord.com/channels/@me) and log in.  
-2. Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac) to open Developer Tools.  
-3. Switch to the **Network** tab and refresh the page (`F5`).  
-4. Filter by `api` and find a request like `/api/v9/users/@me`.  
+> ⚠️ **Warning:** Using a Discord user token violates Discord’s Terms of Service and can lead to account bans. Use for personal or educational purposes only.
 
-**Another Method Instead of digging through Headers**,
- Open [Discord Web](https://discord.com/channels/@me)
- open Developer Tools or inspect element 
- switch to the **Console** tab and paste the Commands blow 
- 
-     
-     allow pasting
-      
-   - **Then paste** the following snippet and hit **Enter**:
-     ```js
-     (
-         webpackChunkdiscord_app.push(
-             [
-                 [''],
-                 {},
-                 e => {
-                     m = [];
-                     for (let c in e.c)
-                         m.push(e.c[c]);
-                 }
-             ]
-         ),
-         m
-     ).find(
-         m => m?.exports?.default?.getToken !== void 0
-     ).exports.default.getToken()
-     ```  
-   - The console will print your **Discord user token**.  
-6. Copy and **keep it secure** — never share it publicly.Copy paste it into your `.env` file or wherever you need it in your bot configuration.
+1. Open [Discord Web](https://discord.com/channels/@me) and log in.
+2. Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac) to open Developer Tools.
+3. Switch to the **Network** tab.
+4. Refresh the page (`F5`).
+5. In the filter/search box, type `api` to filter network requests.
+6. Click on a request like `/api/v9/users/@me`.
+7. In the **Headers** tab, scroll down to **Request Headers** and look for the line starting with `authorization:`.
+8. The value after `authorization:` is your Discord user token.
+
+Copy and **keep it secure**—never share your token publicly. 
 
 ---
  🔑 How to Get Your Discord Channel ID
@@ -109,6 +102,11 @@ Copy the **Channel ID** and paste it into your `.env` file or wherever you need 
 
 ### **4.(Optional) Customize Personal Info**
    Edit `myinfo.txt` to add your personal data (e.g., name, hobbies, favorite phrases) for more personalized replies.
+   For each bot account, create a separate info file:
+- `myinfo.txt` (for account 1)
+- `myinfo2.txt` (for account 2)
+- `myinfo3.txt` (for account 3)
+
 
 ---
 
