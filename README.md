@@ -29,7 +29,14 @@ A multi-account Discord chat bot powered by Google Gemini AI, designed to engage
    git clone https://github.com/xNabil/discord-ai-bot.git
    cd discord-ai-bot
    ```
+ **Windows Automatic Setup (Recommended):**
+   - Run the provided batch script to help set up the bot and environment variables:
+     ```
+     run.bat
+     ```
+   - This will guide you through the initial configuration ( including step 2. **Install dependencies:**)
 
+**Manual Setup:**  
 2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
@@ -66,8 +73,6 @@ SLOW_MODE="60,180"
 3. Click on **Get API Key** or navigate to the **API Keys** section.
 4. Create a new API key or copy an existing one.
 5. Save the API key — you will need it for the `.env` file.
-
-> ⚡ You must have a Google Cloud billing account set up (even if you're within the free tier).
 
 ---
 
