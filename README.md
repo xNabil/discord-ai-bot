@@ -88,7 +88,7 @@ SLOW_MODE="60,180"
 6. Click on a request like `/api/v9/users/@me`.
 7. In the **Headers** tab, scroll down to **Request Headers** and look for the line starting with `authorization:`.
 8. The value after `authorization:` is your Discord user token.
-![Screenshot](https://imgur.com/a/dNRLkkG)
+![Screenshot](https://github.com/xNabil/assets/raw/main/images/discordauthtoken.jpg)
 Copy and **keep it secure**—never share your token publicly. 
 
 ---
