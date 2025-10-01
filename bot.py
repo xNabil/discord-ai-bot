@@ -1005,8 +1005,8 @@ async def run_account(account, slow_mode_range):
                         add_to_memory(account, target_message['id'], target_message['author']['username'], target_message['content'], response, topic)
                         account.responded_messages.append(target_message['id'])
 
-                    # Add delay between channels (2-5 seconds)
-                    channel_delay = random.uniform(2, 5)
+                    # Add delay between channels (1-3 seconds)
+                    channel_delay = random.uniform(1, 3)
                     print_status(account, f"Waiting {channel_delay:.2f}s before processing next channel", 'info')
                     await asyncio.sleep(channel_delay)
 
