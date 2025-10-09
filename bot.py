@@ -1037,7 +1037,7 @@ async def main():
         # Configure Gemini AI for the account
         try:
             genai.configure(api_key=account.gemini_key)
-            account.model = genai.GenerativeModel("gemini-2.5-flash")
+            account.model = genai.GenerativeModel("gemini-2.5-flash-lite")
             print_status(account, "Gemini AI configured successfully", 'success')
         except Exception as e:
             print_status(account, f"Error configuring Gemini AI: {e}", 'error')
