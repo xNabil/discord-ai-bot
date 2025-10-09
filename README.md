@@ -7,7 +7,7 @@ A multi-account Discord chat bot powered by Google Gemini AI, designed to engage
 ## 🚀 Features & Capabilities
 - Multi-account & multi-server support  
 - Smart channel/server caching (`channels.json`)  
-- Gemini 2.5 Flash AI-powered replies  
+- Gemini AI-powered replies  
 - Humanlike style: slang, typos, emoji, self-correction  
 - Topic & sentiment detection  
 - User profiling & personalization (`myinfo.txt`)  
@@ -53,8 +53,8 @@ A multi-account Discord chat bot powered by Google Gemini AI, designed to engage
 The `.env` file supports multiple accounts and multiple channels.
 
 ```
-DISCORD_TOKEN="token1,token2,token3"
-GEMINI_API_KEY="key1,key2,key3"
+DISCORD_TOKEN=token1,token2,token3
+GEMINI_API_KEY=key1,key2,key3
 CHANNEL_ID="channelid1,channelid2,channelid3"
 SLOW_MODE="60,180"
 ```
@@ -74,6 +74,7 @@ SLOW_MODE="60,180"
 4. Create a new API key or copy an existing one.
 5. Save the API key — you will need it for the `.env` file.
 
+> ⚠️ **Important:** One `API_KEY` can generate **15 Requests Per Minute (RPM)** & **1000 Requests Per Day (RPD)**. So it is advised to use multiple Gemini `API KEYS` in the `.env`
 ---
 
 ## 🔓 How to Get Your Discord User Token
