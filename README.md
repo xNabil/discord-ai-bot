@@ -74,7 +74,7 @@ SLOW_MODE="60,180"
 4. Create a new API key or copy an existing one.
 5. Save the API key — you will need it for the `.env` file.
 
-> ⚠️ **Important:** One `API_KEY` can generate **15 Requests Per Minute (RPM)** & **1000 Requests Per Day (RPD)**. So it is advised to use multiple Gemini `API KEYS` in the `.env` according to your needs
+> ⚠️ **Important:** One `API_KEY` can generate **15 Requests Per Minute (RPM)** & **1000 Requests Per Day (RPD)**. So it is advised to use multiple Gemini `API KEYS` in the `.env` according to your needs.
 ---
 
 ## 🔓 How to Get Your Discord User Token
