@@ -1,6 +1,6 @@
 # Discord Chat Bot by Nabil
 # GitHub: https://github.com/xNabil
-# Version: Enhanced with Multi-Account Support, Priority Replies, Smart AI, Banned Words Handling, Probabilistic Response Lengths, Disfluencies, and Casual Professional Style
+# Version: 6.0 Enhanced with Multi-Account Support, Priority Replies, Smart AI, Banned Words Handling, Probabilistic Response Lengths, Disfluencies, and Casual Professional Style
 
 import os
 import aiohttp
