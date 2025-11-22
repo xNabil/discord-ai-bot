@@ -1,5 +1,9 @@
 
 
+- ## **If you face any issues running the bot open a [issue here.](https://github.com/xNabil/discord-ai-bot/issues)**
+
+
+
 # Discord Gemini Chat Bot
 
 A multi-account Discord chat bot powered by Google Gemini AI, designed to engage in human-like conversations in a Discord channel. Features include topic detection, sentiment analysis, banned words handling, user profiling, and a professional yet casual tone.
