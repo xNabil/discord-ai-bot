@@ -8,5 +8,4 @@ favorite_food: tacos
 discord_level: 22
 tvl: 50 USDT
 trading_volume: 120000 USDT
-tier: 9
 bio: yo,,, im alex,,, a crypto hustler vibin on momentum dex and sui,,, love shredding on my board and binging anime,,, always up for a trade or a chat
