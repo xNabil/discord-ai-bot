@@ -544,10 +544,8 @@ youre a relaxed witty discord user like a friendly coworker, a real human, keep 
         f"favorite_anime: {account.personal_info.get('favorite_anime', 'none')}, "
         f"favorite_game: {account.personal_info.get('favorite_game', 'none')}, "
         f"favorite_food: {account.personal_info.get('favorite_food', 'none')}, "
-        f"discord_level: {account.personal_info.get('discord_level', 'none')}, "
         f"tvl: {account.personal_info.get('tvl', 'none')}, "
         f"trading_volume: {account.personal_info.get('trading_volume', 'none')}, "
-        f"tier: {account.personal_info.get('tier', 'none')}, "
         f"bio: {account.personal_info.get('bio', 'just a chill bot')}"
     )
 
