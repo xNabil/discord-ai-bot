@@ -6,7 +6,6 @@ favorite_anime: One Piece
 favorite_game: Valorant
 favorite_food: sushi
 discord_level: 8
-tvl: 800
-trading_volume: 3000
-tier: 9
+tvl: 800 USDT
+trading_volume: 3000 USDT
 bio: tech nerd and sushi lover, lets talk about the latest gadgets or music vibes
