@@ -79,6 +79,7 @@ SLOW_MODE="60,180"
 5. Save the API key — you will need it for the `.env` file.
 
 > ⚠️ **Important:** One `API_KEY` can generate **15 Requests Per Minute (RPM)** & **1000 Requests Per Day (RPD)**. So it is advised to use multiple Gemini `API KEYS` in the `.env` according to your needs.
+> [PS: while generating multiple API keys from different google accounts do not use same billing account otherwise it will hit rate limit like before no matter how many API keys you use. The easiest way is to get a new browser, create a new google account> Get API key ] 
 ---
 
 ## 🔓 How to Get Your Discord User Token
